@@ -15,8 +15,13 @@
         #timer { font-size: 20px; font-weight: bold; color: #c0392b; }
         .question-card { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
         .question-card h3 { margin-top: 0; color: #2980b9; font-size: 18px; line-height: 1.4; }
-        .options label { display: block; margin: 10px 0; padding: 10px; background: #fff; border: 1px solid #eee; border-radius: 5px; cursor: pointer; }
+        .options label { display: block; margin: 10px 0; padding: 10px; background: #fff; border: 1px solid #eee; border-radius: 5px; cursor: pointer; transition: 0.2s; }
         .options label:hover { background: #f1f2f6; }
+        
+        /* CSS Mới: Hiệu ứng tô viền đúng/sai */
+        .correct-ans { border: 2px solid #27ae60 !important; background-color: #eafaf1 !important; font-weight: bold; }
+        .wrong-ans { border: 2px solid #e74c3c !important; background-color: #fadbd8 !important; }
+        
         .result { text-align: center; font-size: 24px; font-weight: bold; margin-top: 20px; padding: 20px; border-radius: 8px; display: none; }
         .pass { background-color: #d4edda; color: #155724; }
         .fail { background-color: #f8d7da; color: #721c24; }
@@ -53,7 +58,7 @@
 </div>
 
 <script>
-    // Dữ liệu 11 đề trích xuất từ "CÁC BỘ ĐỀ MÔ PHỎNG.pdf"
+// Dữ liệu 11 đề trích xuất từ "CÁC BỘ ĐỀ MÔ PHỎNG.pdf"
     const mockData = {
         "1": [
             { q: "Câu 1: Bạn đang tiến vào khu dân cư đông đúc, phía trước là vạch kẻ đường dành cho người đi bộ. Chiếc xe phía trước đột ngột sáng đèn phanh vì có người đi bộ đang chuẩn bị bước xuống lòng đường để qua đường. Phương án xử lý của bạn là:[cite: 1]", o: ["A. Đánh lái sang làn bên cạnh để vượt xe phía trước và tiếp tục hành trình.[cite: 1]", "B. Giữ nguyên tốc độ và lách qua khoảng trống giữa xe phía trước và người đi bộ.[cite: 1]", "C. Hạ tốc độ, duy trì khoảng cách an toàn và chuẩn bị dừng hẳn nếu người đi bộ đi sang đường.[cite: 1]", "D. Bấm còi liên tục để yêu cầu người đi bộ nhường đường cho xe cơ giới.[cite: 1]"], a: 2 },
@@ -188,14 +193,15 @@
             { q: "Câu 10: Mặt đường phía trước vừa có trận mưa rào nên rất trơn trượt, xe đi trước đang thực hiện việc giảm tốc độ để đảm bảo an toàn khi vào cua. Phương án xử lý của bạn là:[cite: 1]", o: ["A. Nhấn ga tăng tốc để đi qua đoạn đường ướt thật nhanh.[cite: 1]", "B. Chủ động hạ tốc độ, duy trì khoảng cách an toàn tối đa với phương tiện đi trước.[cite: 1]", "C. Phanh liên tục để tự kiểm tra độ bám đường của lốp xe mình.[cite: 1]", "D. Bám thật sát vào đuôi xe phía trước để tận dụng vệt nước đã bị xe trước gạt đi.[cite: 1]"], a: 1 }
         ]
     };
-
     let timerInterval;
-    let timeLeft = 10 * 60; // 10 phút cho 10 câu
+    let timeLeft = 10 * 60; 
     let currentExam = [];
+    let isSubmitted = false;
 
     function startExam() {
         const examId = document.getElementById("examSelect").value;
         currentExam = mockData[examId] || [];
+        isSubmitted = false;
 
         document.getElementById("startBtn").style.display = "none";
         document.getElementById("submitBtn").style.display = "block";
@@ -205,6 +211,8 @@
         
         clearInterval(timerInterval);
         timeLeft = 10 * 60;
+        document.getElementById("timer").innerText = "Thời gian: 10:00";
+        document.getElementById("timer").style.color = "#c0392b";
         timerInterval = setInterval(updateTimer, 1000);
     }
 
@@ -218,7 +226,7 @@
             
             let optionsHtml = "";
             item.o.forEach((opt, i) => {
-                optionsHtml += `<label><input type="radio" name="q${index}" value="${i}"> ${opt}</label>`;
+                optionsHtml += `<label id="label-q${index}-o${i}"><input type="radio" name="q${index}" value="${i}"> ${opt}</label>`;
             });
 
             div.innerHTML = `<h3>${item.q}</h3><div class="options">${optionsHtml}</div>`;
@@ -227,24 +235,58 @@
     }
 
     function updateTimer() {
+        if (isSubmitted) return;
+
         const m = Math.floor(timeLeft / 60);
         const s = timeLeft % 60;
         document.getElementById("timer").innerText = `Thời gian: ${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
         
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
+            document.getElementById("timer").innerText = "HẾT GIỜ!";
+            alert("Đã hết thời gian làm bài! Hệ thống tự động nộp bài.");
             submitExam();
         }
         timeLeft--;
     }
 
     function submitExam() {
+        if (isSubmitted) return;
+        isSubmitted = true;
         clearInterval(timerInterval);
+        
         let score = 0;
         
         currentExam.forEach((item, index) => {
-            const selected = document.querySelector(`input[name="q${index}"]:checked`);
-            if (selected && parseInt(selected.value) === item.a) {
+            const options = document.getElementsByName(`q${index}`);
+            let selectedValue = -1;
+
+            // Vòng lặp 1: Tìm đáp án người dùng chọn và Cưỡng chế khóa không cho bấm nữa
+            options.forEach(opt => {
+                opt.disabled = true; // Khóa Input
+                opt.parentElement.style.cursor = "not-allowed"; // Đổi biểu tượng chuột
+                if (opt.checked) {
+                    selectedValue = parseInt(opt.value);
+                }
+            });
+
+            // Vòng lặp 2: Tô viền màu
+            options.forEach((opt, i) => {
+                const label = document.getElementById(`label-q${index}-o${i}`);
+                
+                // Luôn tô xanh đáp án đúng để biết đường mà ôn
+                if (i === item.a) {
+                    label.classList.add("correct-ans");
+                }
+                
+                // Nếu người dùng chọn sai, tô đỏ cái đáp án sai đó
+                if (opt.checked && selectedValue !== item.a) {
+                    label.classList.add("wrong-ans");
+                }
+            });
+
+            // Tính điểm
+            if (selectedValue === item.a) {
                 score++;
             }
         });
@@ -252,12 +294,12 @@
         const resultArea = document.getElementById("resultArea");
         resultArea.style.display = "block";
         
-        if (score >= 9) { // Đạt từ 9/10 câu trở lên
+        if (score >= 9) {
             resultArea.className = "result pass";
-            resultArea.innerHTML = `Tạm được, M đạt ${score}/${currentExam.length} câu. Đủ điểm qua môn!`;
+            resultArea.innerHTML = `Tạm được, m đạt ${score}/${currentExam.length} câu. Đủ điểm qua môn!`;
         } else {
             resultArea.className = "result fail";
-            resultArea.innerHTML = `😏  M chỉ đạt ${score}/${currentExam.length} câu. (Cần tối thiểu 9/10 câu). Ahihi lêu lêu!`;
+            resultArea.innerHTML = ` M chỉ đạt ${score}/${currentExam.length} câu thôi :)) ahihi`;
         }
         
         document.getElementById("submitBtn").style.display = "none";
