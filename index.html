@@ -296,10 +296,10 @@
         
         if (score >= 9) {
             resultArea.className = "result pass";
-            resultArea.innerHTML = `Tạm được, m đạt ${score}/${currentExam.length} câu. Đủ điểm qua môn!`;
+            resultArea.innerHTML = `Tạm được, đạt ${score}/${currentExam.length} câu. Đủ điểm qua môn`;
         } else {
             resultArea.className = "result fail";
-            resultArea.innerHTML = ` M chỉ đạt ${score}/${currentExam.length} câu thôi :)) ahihi`;
+            resultArea.innerHTML = ` Làm lại, chỉ đạt ${score}/${currentExam.length} câu thôi, tạch r ahihi`;
         }
         
         document.getElementById("submitBtn").style.display = "none";
